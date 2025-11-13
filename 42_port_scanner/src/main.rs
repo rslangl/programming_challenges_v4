@@ -1,4 +1,6 @@
 use clap::Parser;
+use std::io::prelude::*;
+use std::net::TcpStream;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -11,11 +13,13 @@ struct Args {
     port: u8
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
 
     let args = Args::parse();
 
     println!("{:?}", args);
 
-
+    let mut stream: TcpStream = TcpStream::connect(args.target + ":" + args.port.to_string().as_str())?;
+    stream.write(&[1])?;
+    Ok(())
 }
