@@ -4,3 +4,6 @@ Claiming streetcredz, like a based heretic!
 
 ![pro/g/ramming challenges](https://i.imgur.com/OQ6B6ir.jpeg)
 
+## References
+
+* [zig cookbook](https://cookbook.ziglang.cc/)
