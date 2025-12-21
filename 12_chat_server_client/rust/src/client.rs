@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write, stdin},
+    io::{Write, stdin},
     net::TcpStream,
 };
 
@@ -24,17 +24,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let mut buf = String::new();
+    let remote_addr = String::from(server.peer_addr()?.ip().to_string());
+
+    let mut input_buffer: [u8; 255] = [0x0; 255];
+    let mut output_buffer = String::new();
 
     loop {
+        // if let Ok(message_bytes) = server.read(&mut input_buffer[..]) {
+        //     if message_bytes > 0 {
+        //         let system_time = SystemTime::now();
+        //         let datetime: DateTime<Utc> = system_time.into();
+        //
+        //         print!(
+        //             "[{}:{}]: {}",
+        //             datetime.format("%d/%m/%Y %T"),
+        //             remote_addr,
+        //             str::from_utf8(&input_buffer)?
+        //         );
+        //     }
+        //
+        //     // clear input buffer
+        //     input_buffer.fill(0);
+        // }
+
         print!("[Send to {}]: ", server.peer_addr()?.ip().to_string());
         std::io::stdout().flush()?;
 
         // returns the read input in usize
-        let _ = stdin().read_line(&mut buf)?;
+        let _ = stdin().read_line(&mut output_buffer)?;
 
-        server.write(buf.as_bytes())?;
+        server.write(output_buffer.as_bytes())?;
 
-        buf.clear();
+        output_buffer.clear();
     }
 }
