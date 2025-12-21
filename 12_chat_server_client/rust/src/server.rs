@@ -2,7 +2,7 @@ use std::{
     io::{Read, Write, stdin},
     net::{Shutdown, TcpListener, TcpStream},
     str,
-    sync::mpsc::channel,
+    sync::mpsc::{Sender, channel},
     thread,
     time::SystemTime,
 };
@@ -72,30 +72,16 @@ impl Runnable for ClientRole {
             Err(e) => return Err(RoleError::Tcp(e)),
         };
 
+        let reader = self.server.try_clone()?;
+
         // worker thread for incoming messages
         {
-            let mut client = self.server.try_clone().unwrap();
-            let tx = tx.clone();
-            let mut buffer: [u8; 255] = [0x0; 255];
+            let remote_addr = match reader.peer_addr() {
+                Ok(ra) => String::from(ra.ip().to_string()),
+                Err(e) => return Err(RoleError::Tcp(e)),
+            };
 
-            thread::spawn(move || -> Result<(), Box<dyn std::error::Error + Send>> {
-                let remote_addr = match client.peer_addr() {
-                    Ok(ra) => String::from(ra.ip().to_string()),
-                    Err(e) => return Err(Box::new(e)),
-                };
-
-                loop {
-                    if let Ok(message_bytes) = client.read(&mut buffer[..]) {
-                        if message_bytes > 0 {
-                            if let Ok(message) = str::from_utf8(&buffer[..message_bytes]) {
-                                let payload = format_incoming(message, remote_addr.as_str());
-                                tx.send(payload).unwrap()
-                            };
-                        }
-                        buffer.fill(0);
-                    }
-                }
-            });
+            reader_thread(reader, tx.clone(), remote_addr);
         }
 
         // stdout handling
@@ -146,7 +132,7 @@ impl Runnable for ServerRole {
     fn run(&mut self) -> Result<(), RoleError> {
         for conn in self.listener.incoming() {
             match conn {
-                Ok(mut c) => {
+                Ok(c) => {
                     // shared channel for writing to stdout
                     let (tx, rx) = channel();
 
@@ -155,36 +141,18 @@ impl Runnable for ServerRole {
                         Err(e) => return Err(RoleError::Tcp(e)),
                     };
 
-                    // client for outgoing traffic
+                    // handles for I/O
                     let mut writer = c.try_clone().map_err(RoleError::Tcp)?;
-                    let mut reader = c;
+                    let reader = c;
 
                     // worker thread for incoming messages
                     {
-                        let tx = tx.clone();
-                        let mut buffer: [u8; 255] = [0x0; 255];
+                        let remote_addr = match reader.peer_addr() {
+                            Ok(ra) => String::from(ra.ip().to_string()),
+                            Err(e) => return Err(RoleError::Tcp(e)),
+                        };
 
-                        thread::spawn(move || -> Result<(), Box<dyn std::error::Error + Send>> {
-                            let remote_addr = match reader.peer_addr() {
-                                Ok(ra) => String::from(ra.ip().to_string()),
-                                Err(e) => return Err(Box::new(e)),
-                            };
-
-                            loop {
-                                if let Ok(message_bytes) = reader.read(&mut buffer[..]) {
-                                    if message_bytes > 0 {
-                                        if let Ok(message) =
-                                            str::from_utf8(&buffer[..message_bytes])
-                                        {
-                                            let payload =
-                                                format_incoming(message, remote_addr.as_str());
-                                            tx.send(payload).unwrap()
-                                        };
-                                    }
-                                    buffer.fill(0);
-                                }
-                            }
-                        });
+                        reader_thread(reader, tx.clone(), remote_addr);
                     }
 
                     // stdout handling
@@ -240,6 +208,12 @@ enum RoleError {
     Tcp(std::io::Error),
 }
 
+impl From<std::io::Error> for RoleError {
+    fn from(e: std::io::Error) -> Self {
+        RoleError::Tcp(e)
+    }
+}
+
 impl TryFrom<RoleCmd> for Role {
     type Error = RoleError;
 
@@ -255,6 +229,28 @@ impl TryFrom<RoleCmd> for Role {
             }
         }
     }
+}
+
+fn reader_thread(
+    mut stream: TcpStream,
+    tx: Sender<String>,
+    remote_addr: String,
+) -> thread::JoinHandle<Result<(), Box<dyn std::error::Error + Send>>> {
+    thread::spawn(move || {
+        let mut buffer = [0u8; 255];
+
+        loop {
+            if let Ok(message_bytes) = stream.read(&mut buffer) {
+                if message_bytes > 0 {
+                    if let Ok(message) = str::from_utf8(&buffer[..message_bytes]) {
+                        let payload = format_incoming(message, remote_addr.as_str());
+                        tx.send(payload).unwrap()
+                    };
+                }
+                buffer.fill(0);
+            }
+        }
+    })
 }
 
 fn format_incoming(message: &str, remote_addr: &str) -> String {
