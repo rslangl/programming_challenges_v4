@@ -8,9 +8,5 @@ chrono = "0.4.42"
 clap = { version = "4.5.53", features = ["derive"] }
 
 [[bin]]
-name = "client"
-path = "src/client.rs"
-
-[[bin]]
-name = "server"
-path = "src/server.rs"
+name = "chat"
+path = "src/main.rs"
