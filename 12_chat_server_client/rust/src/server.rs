@@ -86,22 +86,9 @@ impl Runnable for ClientRole {
 
                 loop {
                     if let Ok(message_bytes) = client.read(&mut buffer[..]) {
-                        // TODO: check if size is at least equal to
-                        // the expected wire-format (peer address +
-                        // payload)
                         if message_bytes > 0 {
                             if let Ok(message) = str::from_utf8(&buffer[..message_bytes]) {
-                                let datetime: DateTime<Utc> = SystemTime::now().into();
-                                let datetime_str = datetime.format("%d/%m/%Y %T").to_string();
-                                let mut payload = String::new();
-
-                                payload.push_str("[");
-                                payload.push_str(datetime_str.as_str());
-                                payload.push_str(" ");
-                                payload.push_str(remote_addr.as_str());
-                                payload.push_str("]: ");
-                                payload.push_str(message);
-
+                                let payload = format_incoming(message, remote_addr.as_str());
                                 tx.send(payload).unwrap()
                             };
                         }
@@ -189,18 +176,8 @@ impl Runnable for ServerRole {
                                         if let Ok(message) =
                                             str::from_utf8(&buffer[..message_bytes])
                                         {
-                                            let datetime: DateTime<Utc> = SystemTime::now().into();
-                                            let datetime_str =
-                                                datetime.format("%d/%m/%Y %T").to_string();
-                                            let mut payload = String::new();
-
-                                            payload.push_str("[");
-                                            payload.push_str(datetime_str.as_str());
-                                            payload.push_str(" ");
-                                            payload.push_str(remote_addr.as_str());
-                                            payload.push_str("]: ");
-                                            payload.push_str(message);
-
+                                            let payload =
+                                                format_incoming(message, remote_addr.as_str());
                                             tx.send(payload).unwrap()
                                         };
                                     }
@@ -278,6 +255,21 @@ impl TryFrom<RoleCmd> for Role {
             }
         }
     }
+}
+
+fn format_incoming(message: &str, remote_addr: &str) -> String {
+    let datetime: DateTime<Utc> = SystemTime::now().into();
+    let datetime_str = datetime.format("%d/%m/%Y %T").to_string();
+    let mut payload = String::new();
+
+    payload.push_str("[");
+    payload.push_str(datetime_str.as_str());
+    payload.push_str(" ");
+    payload.push_str(remote_addr);
+    payload.push_str("]: ");
+    payload.push_str(message);
+
+    payload
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
