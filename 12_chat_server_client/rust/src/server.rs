@@ -1,5 +1,11 @@
-use std::{io::Read, net::TcpListener, str};
+use std::{
+    io::Read,
+    net::{Shutdown, TcpListener},
+    str,
+    time::SystemTime,
+};
 
+use chrono::{DateTime, Utc};
 use clap::Parser;
 
 #[derive(Parser)]
@@ -25,18 +31,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for conn in server.incoming() {
         match conn {
             Ok(mut c) => {
+                let client_addr = String::from(c.peer_addr()?.ip().to_string());
+
                 // input buffer
                 let mut buf: [u8; 255] = [0x0; 255];
 
                 loop {
-                    c.read(&mut buf[..])?;
+                    if let Ok(message_bytes) = c.read(&mut buf[..]) {
+                        if message_bytes > 0 {
+                            let system_time = SystemTime::now();
+                            let datetime: DateTime<Utc> = system_time.into();
 
-                    let message = str::from_utf8(&buf)?;
-
-                    print!("{}", message);
+                            print!(
+                                "[{}:{}]: {}",
+                                datetime.format("%d/%m/%Y %T"),
+                                client_addr,
+                                str::from_utf8(&buf)?
+                            );
+                        }
+                    }
 
                     buf.fill(0);
                 }
+
+                //c.shutdown(Shutdown::Both)?
             }
             Err(e) => {
                 eprintln!("error: could not handle connection: {}", e);

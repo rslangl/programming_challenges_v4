@@ -20,13 +20,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             eprintln!("error: could not establish connection: {}", e);
-            std::process::exit(1)
+            return Err(Box::new(e));
         }
     };
 
     let mut buf = String::new();
 
     loop {
+        print!("[Send to {}]: ", server.peer_addr()?.ip().to_string());
+        std::io::stdout().flush()?;
+
+        // returns the read input in usize
         let _ = stdin().read_line(&mut buf)?;
 
         server.write(buf.as_bytes())?;
