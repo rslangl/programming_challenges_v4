@@ -90,7 +90,7 @@ impl Runnable for ClientRole {
                         // the expected wire-format (peer address +
                         // payload)
                         if message_bytes > 0 {
-                            if let Ok(message) = str::from_utf8(&buffer) {
+                            if let Ok(message) = str::from_utf8(&buffer[..message_bytes]) {
                                 let datetime: DateTime<Utc> = SystemTime::now().into();
                                 let datetime_str = datetime.format("%d/%m/%Y %T").to_string();
                                 let mut payload = String::new();
@@ -118,7 +118,7 @@ impl Runnable for ClientRole {
 
             loop {
                 for msg in &rx {
-                    // clear current prompt line
+                    // clear current prompt line in order to write incoming on the line above
                     write!(out, "\x1b[2K\r").unwrap();
                     write!(out, "{msg}").unwrap();
                     write!(out, "{prompt}").unwrap();
@@ -136,7 +136,6 @@ impl Runnable for ClientRole {
                     "/quit" => break,
                     _ => {
                         let _ = self.server.write(buffer.as_bytes());
-                        tx.send(buffer.clone()).unwrap();
                     }
                 }
             };
@@ -170,10 +169,8 @@ impl Runnable for ServerRole {
                     };
 
                     // client for outgoing traffic
-                    let mut client = match TcpStream::connect(self.listener.local_addr().unwrap()) {
-                        Ok(c) => c,
-                        Err(e) => return Err(RoleError::Tcp(e)),
-                    };
+                    let mut writer = c.try_clone().map_err(RoleError::Tcp)?;
+                    let mut reader = c;
 
                     // worker thread for incoming messages
                     {
@@ -181,18 +178,17 @@ impl Runnable for ServerRole {
                         let mut buffer: [u8; 255] = [0x0; 255];
 
                         thread::spawn(move || -> Result<(), Box<dyn std::error::Error + Send>> {
-                            let remote_addr = match c.peer_addr() {
+                            let remote_addr = match reader.peer_addr() {
                                 Ok(ra) => String::from(ra.ip().to_string()),
                                 Err(e) => return Err(Box::new(e)),
                             };
 
                             loop {
-                                if let Ok(message_bytes) = c.read(&mut buffer[..]) {
-                                    // TODO: check if size is at least equal to
-                                    // the expected wire-format (peer address +
-                                    // payload)
+                                if let Ok(message_bytes) = reader.read(&mut buffer[..]) {
                                     if message_bytes > 0 {
-                                        if let Ok(message) = str::from_utf8(&buffer) {
+                                        if let Ok(message) =
+                                            str::from_utf8(&buffer[..message_bytes])
+                                        {
                                             let datetime: DateTime<Utc> = SystemTime::now().into();
                                             let datetime_str =
                                                 datetime.format("%d/%m/%Y %T").to_string();
@@ -221,7 +217,7 @@ impl Runnable for ServerRole {
 
                         loop {
                             for msg in &rx {
-                                // clear current prompt line
+                                // clear current prompt line in order to write incoming on the line above
                                 write!(out, "\x1b[2K\r").unwrap();
                                 write!(out, "{msg}").unwrap();
                                 write!(out, "{prompt}").unwrap();
@@ -238,8 +234,7 @@ impl Runnable for ServerRole {
                             match buffer.as_str() {
                                 "/quit" => break,
                                 _ => {
-                                    let _ = client.write(buffer.as_bytes());
-                                    tx.send(buffer.clone()).unwrap();
+                                    let _ = writer.write(buffer.as_bytes());
                                 }
                             }
                         };
@@ -247,7 +242,7 @@ impl Runnable for ServerRole {
                         buffer.clear();
                     }
 
-                    client.shutdown(Shutdown::Both).map_err(RoleError::Tcp)?;
+                    writer.shutdown(Shutdown::Both).map_err(RoleError::Tcp)?;
 
                     ui.join().unwrap();
 
@@ -300,106 +295,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1)
         }
     };
-
-    // for conn in server.incoming() {
-    //     match conn {
-    //         Ok(mut c) => {
-    //             // shared channel for writing to stdout
-    //             let (tx, rx) = channel();
-    //
-    //             let server_addr = match server.local_addr() {
-    //                 Ok(sa) => sa.to_string(),
-    //                 Err(e) => return Err(Box::new(e)),
-    //             };
-    //
-    //             // client for outgoing traffic
-    //             let mut client = match TcpStream::connect(server.local_addr().unwrap()) {
-    //                 Ok(c) => c,
-    //                 Err(e) => return Err(Box::new(e)),
-    //             };
-    //
-    //             // worker thread for incoming messages
-    //             {
-    //                 let tx = tx.clone();
-    //                 let mut buffer: [u8; 255] = [0x0; 255];
-    //
-    //                 thread::spawn(move || -> Result<(), Box<dyn std::error::Error + Send>> {
-    //                     let remote_addr = match c.peer_addr() {
-    //                         Ok(ra) => String::from(ra.ip().to_string()),
-    //                         Err(e) => return Err(Box::new(e)),
-    //                     };
-    //
-    //                     loop {
-    //                         if let Ok(message_bytes) = c.read(&mut buffer[..]) {
-    //                             // TODO: check if size is at least equal to
-    //                             // the expected wire-format (peer address +
-    //                             // payload)
-    //                             if message_bytes > 0 {
-    //                                 if let Ok(message) = str::from_utf8(&buffer) {
-    //                                     let datetime: DateTime<Utc> = SystemTime::now().into();
-    //                                     let datetime_str =
-    //                                         datetime.format("%d/%m/%Y %T").to_string();
-    //                                     let mut payload = String::new();
-    //
-    //                                     payload.push_str("[");
-    //                                     payload.push_str(datetime_str.as_str());
-    //                                     payload.push_str(" ");
-    //                                     payload.push_str(remote_addr.as_str());
-    //                                     payload.push_str("]: ");
-    //                                     payload.push_str(message);
-    //
-    //                                     tx.send(payload).unwrap()
-    //                                 };
-    //                             }
-    //                             buffer.fill(0);
-    //                         }
-    //                     }
-    //                 });
-    //             }
-    //
-    //             // stdout handling
-    //             let ui = thread::spawn(move || {
-    //                 let mut out = std::io::stdout();
-    //                 let prompt = format_args!("[Send to {}]:", server_addr);
-    //
-    //                 loop {
-    //                     for msg in &rx {
-    //                         // clear current prompt line
-    //                         write!(out, "\x1b[2K\r").unwrap();
-    //                         write!(out, "{msg}").unwrap();
-    //                         write!(out, "{prompt}").unwrap();
-    //                         out.flush().unwrap();
-    //                     }
-    //                 }
-    //             });
-    //
-    //             let mut buffer = String::new();
-    //
-    //             // input handling
-    //             loop {
-    //                 if let Ok(_) = stdin().read_line(&mut buffer) {
-    //                     match buffer.as_str() {
-    //                         "/quit" => break,
-    //                         _ => {
-    //                             let _ = client.write(buffer.as_bytes());
-    //                             tx.send(buffer.clone()).unwrap();
-    //                         }
-    //                     }
-    //                 };
-    //
-    //                 buffer.clear();
-    //             }
-    //
-    //             client.shutdown(Shutdown::Both)?;
-    //
-    //             ui.join().unwrap();
-    //
-    //             drop(tx);
-    //         }
-    //         Err(e) => {
-    //             eprintln!("error: could not handle connection: {}", e);
-    //             return Err(Box::new(e));
-    //         }
-    //     }
-    // }
 }
