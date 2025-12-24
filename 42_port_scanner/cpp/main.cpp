@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <ranges>
@@ -17,12 +18,40 @@ class ScanJob {
 public:
   ScanJob() : _ports{}, _hosts{} {}
 
-  auto add_hosts(char *hostarg) -> void {
-    parse_input<std::string>(hostarg, &_hosts);
+  auto add_ports(char *portarg) -> void {
+
+    std::string input = std::string(portarg);
+    std::vector<std::string> tokens = tokenize(input);
+
+    std::for_each(
+        tokens.begin(), tokens.end(), [this](const auto &token) -> void {
+          unsigned int port_val{};
+
+          auto [ptr, ec] = std::from_chars(
+              token.data(), token.data() + token.size(), port_val, 10);
+
+          if (ec != std::errc{} || port_val < 0 || port_val > 255) {
+            std::cerr << "ERROR: Invalid numeric input: " << port_val << '\n';
+          }
+
+          this->_ports.push_back(static_cast<uint8_t>(port_val));
+        });
   }
 
-  auto add_ports(char *portarg) -> void {
-    parse_input<uint8_t>(portarg, &_ports);
+  auto add_hosts(char *hostarg) -> void {
+
+    std::string input = std::string(hostarg);
+    std::vector<std::string> tokens = tokenize(input);
+
+    std::for_each(tokens.begin(), tokens.end(),
+                  [this](const auto &token) -> void {
+                    std::string host_val{};
+
+                    host_val = token;
+
+                    // TODO: regex parse
+                    this->_hosts.push_back(host_val);
+                  });
   }
 
   auto add_protocol(char *protocolarg)
@@ -43,16 +72,6 @@ public:
   ~ScanJob() {}
 
 private:
-  /**
-   *  Validates the user-provided input based on the type of data we expect
-   */
-  template <class T>
-  auto validate(std::string regex, std::vector<T> *data) -> void {}
-
-  /**
-   *  Takes the stringified user-provided input and splits it based on given
-   * delimiters
-   */
   auto tokenize(std::string input) -> std::vector<std::string> {
     std::vector<std::string> tokens{};
 
@@ -61,19 +80,6 @@ private:
     }
 
     return tokens;
-  }
-
-  /**
-   *  Takes the raw user-provided input and parses it
-   */
-  template <class T> auto parse_input(char *arg, std::vector<T> *data) -> void {
-    std::string input = std::string(arg);
-    std::vector<std::string> tokens = tokenize(input);
-
-    std::for_each(tokens.begin(), tokens.end(), [data](auto &token) -> void {
-      std::cout << "Token: " << token << '\n';
-      data->push_back(static_cast<T>(token));
-    });
   }
 
   std::vector<uint8_t> _ports;
@@ -94,27 +100,37 @@ auto main(int argc, char *argv[]) -> int {
     switch (opt) {
     case 'p':
       job.add_ports(optarg);
-      break;
+      continue;
     case 'h':
-      job.add_ports(optarg);
-      break;
+      job.add_hosts(optarg);
+      continue;
     case 't':
       job.add_protocol(optarg);
-      break;
+      continue;
     default:
       print_help();
       return 1;
     }
   }
 
-  std::cout << "Ports:" << '\n';
+  std::cout << "DEBUG: Ports:" << '\n';
   for (auto &el : job.ports()) {
+    std::cout << static_cast<int>(el) << '\n';
+  }
+
+  std::cout << "DEBUG: Hosts:" << '\n';
+  for (auto &el : job.hosts()) {
     std::cout << el << '\n';
   }
 
-  std::cout << "Hosts:" << '\n';
-  for (auto &el : job.hosts()) {
-    std::cout << el << '\n';
+  if (job.ports().empty()) {
+    std::cerr << "ERROR: Minimum one port input is required" << '\n';
+    return 1;
+  }
+
+  if (job.hosts().empty()) {
+    std::cerr << "ERROR: Minimum one host input is required" << '\n';
+    return 1;
   }
 
   return 0;
