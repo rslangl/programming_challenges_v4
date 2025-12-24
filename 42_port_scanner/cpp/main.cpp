@@ -1,10 +1,10 @@
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
-#include <string>
+#include <ranges>
+#include <string_view>
 #include <unistd.h>
 #include <vector>
-
-using namespace std;
 
 auto print_help() -> void {
   std::cout << "Usage: " << '\n'
@@ -13,18 +13,78 @@ auto print_help() -> void {
             << "  -t  Transmission protocl (UDP/TCP)" << '\n';
 }
 
-struct scan_job {
-  vector<int> ports;
-  vector<string> hosts;
-  string protocol;
+class ScanJob {
+public:
+  ScanJob() : _ports{}, _hosts{} {}
+
+  auto add_hosts(char *hostarg) -> void {
+    parse_input<std::string>(hostarg, &_hosts);
+  }
+
+  auto add_ports(char *portarg) -> void {
+    parse_input<uint8_t>(portarg, &_ports);
+  }
+
+  auto add_protocol(char *protocolarg)
+      -> void { // TODO: act as proper error when invalid
+    std::string p = protocolarg;
+
+    if (p != "TCP" || p != "UDP") {
+      std::cerr << "ERROR: Invalid protocol argument" << '\n';
+    }
+
+    _protocol = p;
+  }
+
+  auto ports() -> const std::vector<uint8_t> & { return _ports; }
+
+  auto hosts() -> const std::vector<std::string> & { return _hosts; }
+
+  ~ScanJob() {}
+
+private:
+  /**
+   *  Validates the user-provided input based on the type of data we expect
+   */
+  template <class T>
+  auto validate(std::string regex, std::vector<T> *data) -> void {}
+
+  /**
+   *  Takes the stringified user-provided input and splits it based on given
+   * delimiters
+   */
+  auto tokenize(std::string input) -> std::vector<std::string> {
+    std::vector<std::string> tokens{};
+
+    for (auto subrange : std::views::split(input, ',')) {
+      tokens.push_back(std::string(subrange.begin(), subrange.end()));
+    }
+
+    return tokens;
+  }
+
+  /**
+   *  Takes the raw user-provided input and parses it
+   */
+  template <class T> auto parse_input(char *arg, std::vector<T> *data) -> void {
+    std::string input = std::string(arg);
+    std::vector<std::string> tokens = tokenize(input);
+
+    std::for_each(tokens.begin(), tokens.end(), [data](auto &token) -> void {
+      std::cout << "Token: " << token << '\n';
+      data->push_back(static_cast<T>(token));
+    });
+  }
+
+  std::vector<uint8_t> _ports;
+  std::vector<std::string> _hosts;
+  std::string _protocol;
 };
 
 auto main(int argc, char *argv[]) -> int {
 
   int opt{};
-
-  const int protocol_max_len = 3;
-  struct scan_job job{};
+  ScanJob job{};
 
   // p = port
   // h = host
@@ -33,31 +93,28 @@ auto main(int argc, char *argv[]) -> int {
   while ((opt = getopt(argc, argv, "p:h:t:h")) != -1) {
     switch (opt) {
     case 'p':
-      std::cout << "Port: " << optarg << '\n';
-      while (*optarg) {
-        optarg++;
-        job.ports.push_back(reinterpret_cast<uintptr_t>(optarg));
-      }
+      job.add_ports(optarg);
       break;
     case 'h':
-      std::cout << "Host: " << optarg << '\n';
-      while (*optarg) {
-        optarg++;
-        job.hosts.push_back(string(optarg));
-      }
+      job.add_ports(optarg);
       break;
     case 't':
-      std::cout << "Protocol: " << optarg << '\n';
-      job.protocol = string(protocol_max_len, *optarg);
-      if (job.protocol != "UDP" || job.protocol != "TCP") {
-        std::cerr << "ERROR: Illegal protocol" << '\n';
-        return 1;
-      }
+      job.add_protocol(optarg);
       break;
     default:
       print_help();
       return 1;
     }
+  }
+
+  std::cout << "Ports:" << '\n';
+  for (auto &el : job.ports()) {
+    std::cout << el << '\n';
+  }
+
+  std::cout << "Hosts:" << '\n';
+  for (auto &el : job.hosts()) {
+    std::cout << el << '\n';
   }
 
   return 0;

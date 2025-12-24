@@ -1,5 +1,5 @@
-CC=g++
-CFLAGS= -std=c++20 -g -Wall
+CC=clang++
+CFLAGS= -std=c++23 -fdiagnostics-color=always -g -Wall
 BIN=portscanner
 
 .PHONY: clean
