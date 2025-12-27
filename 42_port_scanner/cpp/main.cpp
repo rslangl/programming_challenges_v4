@@ -1,18 +1,107 @@
 #include <algorithm>
-#include <concepts>
+#include <array>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <ranges>
 #include <regex>
 #include <string_view>
 #include <unistd.h>
 #include <vector>
 
+// class HostConnection {
+// public:
+//   HostConnection() {
+//     this->_socket = socket(AF_INET, SOCK_STREAM, 0);
+//     this->_address.sin_family = AF_INET;
+//   }
+//
+
+namespace scanner {
+
 const std::regex ipv4_regex("^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
 
-// static auto is_ipv4(const std::string host) -> bool {
-//   constexpr std::regex host_regex(ipv4_regex);
-// }
+enum class protocol { TCP, UDP };
+
+const std::array<std::pair<std::string_view, protocol>, 2> protocol_map{
+    {{"TCP", protocol::TCP}, {"UDP", protocol::UDP}}};
+
+auto tokenize(const std::string input) -> std::vector<std::string> {
+  std::vector<std::string> tokens{};
+
+  for (auto subrange : std::views::split(input, ',')) {
+    tokens.push_back(std::string(subrange.begin(), subrange.end()));
+  }
+
+  return tokens;
+}
+
+auto ports(const char *portarg) -> std::optional<std::vector<uint16_t>> {
+  std::vector<uint16_t> ports{};
+  std::string input = std::string(portarg);
+
+  std::vector<std::string> tokens = tokenize(input);
+  std::for_each(tokens.begin(), tokens.end(),
+                [&ports](const auto &token) -> void {
+                  unsigned int port_val{};
+
+                  auto [ptr, ec] = std::from_chars(
+                      token.data(), token.data() + token.size(), port_val, 10);
+
+                  if (ec != std::errc{} || port_val < 0 || port_val > 65535) {
+                    std::cerr << "ERROR: Invalid numeric input '" << port_val
+                              << "', ignoring\n";
+                  } else {
+                    ports.push_back(static_cast<uint16_t>(port_val));
+                  }
+                });
+
+  if (ports.empty()) {
+    std::cerr << "ERROR: Port list is empty\n";
+    return std::nullopt;
+  }
+
+  return ports;
+}
+
+auto hosts(const char *hostarg) -> std::optional<std::vector<std::string>> {
+  std::vector<std::string> hosts{};
+  std::string input = std::string(hostarg);
+
+  std::vector<std::string> tokens = tokenize(input);
+  std::for_each(tokens.begin(), tokens.end(),
+                [&hosts](const auto &token) -> void {
+                  std::string host_val{};
+
+                  if (std::regex_match(token, ipv4_regex)) {
+                    host_val = token;
+                    hosts.push_back(host_val);
+                  } else {
+                    std::cerr << "ERROR: Invalid host IPv4 addrress '" << token
+                              << "', ignoring\n";
+                  }
+                });
+
+  if (hosts.empty()) {
+    std::cerr << "ERROR: Host list is empty\n";
+    return std::nullopt;
+  }
+
+  return hosts;
+}
+
+auto set_protocol(char *protocolarg) -> std::optional<protocol> {
+  std::string input = std::string(protocolarg);
+
+  for (auto [name, prot] : protocol_map) {
+    if (name == input) {
+      return prot;
+    }
+  }
+
+  return std::nullopt;
+}
+} // namespace scanner
 
 auto print_help() -> void {
   std::cout << "Usage: " << '\n'
@@ -21,85 +110,13 @@ auto print_help() -> void {
             << "  -t  Transmission protocl (UDP/TCP)" << '\n';
 }
 
-class ScanJob {
-public:
-  ScanJob() : _ports{}, _hosts{} {}
-
-  auto add_ports(char *portarg) -> void {
-
-    std::string input = std::string(portarg);
-    std::vector<std::string> tokens = tokenize(input);
-
-    std::for_each(
-        tokens.begin(), tokens.end(), [this](const auto &token) -> void {
-          unsigned int port_val{};
-
-          auto [ptr, ec] = std::from_chars(
-              token.data(), token.data() + token.size(), port_val, 10);
-
-          if (ec != std::errc{} || port_val < 0 || port_val > 255) {
-            std::cerr << "ERROR: Invalid numeric input: " << port_val << '\n';
-          }
-
-          this->_ports.push_back(static_cast<uint8_t>(port_val));
-        });
-  }
-
-  auto add_hosts(char *hostarg) -> void {
-
-    std::string input = std::string(hostarg);
-    std::vector<std::string> tokens = tokenize(input);
-
-    std::for_each(tokens.begin(), tokens.end(),
-                  [this](const auto &token) -> void {
-                    std::string host_val{};
-
-                    if (std::regex_match(token, ipv4_regex)) {
-                      host_val = token;
-                      this->_hosts.push_back(host_val);
-                    } else {
-                      std::cerr << "ERROR: Invalid host IPv4 addrress" << '\n';
-                    }
-                  });
-  }
-
-  auto add_protocol(char *protocolarg)
-      -> void { // TODO: act as proper error when invalid
-    std::string p = protocolarg;
-
-    if (p != "TCP" || p != "UDP") {
-      std::cerr << "ERROR: Invalid protocol argument" << '\n';
-    }
-
-    _protocol = p;
-  }
-
-  auto ports() -> const std::vector<uint8_t> & { return _ports; }
-
-  auto hosts() -> const std::vector<std::string> & { return _hosts; }
-
-  ~ScanJob() {}
-
-private:
-  auto tokenize(std::string input) -> std::vector<std::string> {
-    std::vector<std::string> tokens{};
-
-    for (auto subrange : std::views::split(input, ',')) {
-      tokens.push_back(std::string(subrange.begin(), subrange.end()));
-    }
-
-    return tokens;
-  }
-
-  std::vector<uint8_t> _ports;
-  std::vector<std::string> _hosts;
-  std::string _protocol;
-};
-
 auto main(int argc, char *argv[]) -> int {
 
   int opt{};
-  ScanJob job{};
+
+  std::vector<std::string> hosts;
+  std::vector<uint16_t> ports;
+  scanner::protocol protocol;
 
   // p = port
   // h = host
@@ -108,13 +125,28 @@ auto main(int argc, char *argv[]) -> int {
   while ((opt = getopt(argc, argv, "p:h:t:h")) != -1) {
     switch (opt) {
     case 'p':
-      job.add_ports(optarg);
+      if (auto p = scanner::ports(optarg)) {
+        ports = *p;
+      } else {
+        std::cerr << "ERROR: Invalid port input: " << optarg << '\n';
+        return -1;
+      }
       continue;
     case 'h':
-      job.add_hosts(optarg);
+      if (auto h = scanner::hosts(optarg)) {
+        hosts = *h;
+      } else {
+        std::cerr << "ERROR: Minimum one host input is required\n";
+        return -1;
+      }
       continue;
     case 't':
-      job.add_protocol(optarg);
+      if (auto p = scanner::set_protocol(optarg)) {
+        protocol = *p;
+      } else {
+        std::cerr << "ERROR: Invalid protocol selection: " << optarg << '\n';
+        return -1;
+      }
       continue;
     default:
       print_help();
@@ -123,23 +155,13 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   std::cout << "DEBUG: Ports:" << '\n';
-  for (auto &el : job.ports()) {
+  for (auto &el : ports) {
     std::cout << static_cast<int>(el) << '\n';
   }
 
   std::cout << "DEBUG: Hosts:" << '\n';
-  for (auto &el : job.hosts()) {
+  for (auto &el : hosts) {
     std::cout << el << '\n';
-  }
-
-  if (job.ports().empty()) {
-    std::cerr << "ERROR: Minimum one port input is required" << '\n';
-    return 1;
-  }
-
-  if (job.hosts().empty()) {
-    std::cerr << "ERROR: Minimum one host input is required" << '\n';
-    return 1;
   }
 
   return 0;
