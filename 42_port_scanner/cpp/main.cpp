@@ -1,30 +1,45 @@
 #include <algorithm>
+#include <arpa/inet.h>
 #include <array>
+// #include <bitset>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <optional>
 #include <ranges>
 #include <regex>
 #include <string_view>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 
-// class HostConnection {
-// public:
-//   HostConnection() {
-//     this->_socket = socket(AF_INET, SOCK_STREAM, 0);
-//     this->_address.sin_family = AF_INET;
-//   }
-//
-
 namespace scanner {
 
+// Dislaimer: taken from https://stackoverflow.com/a/36760050, which uses
+// lookahead to check if the numbers start with 25 and then doesnt't accept them
+// if they continue with numbers between 6 and 9
 const std::regex ipv4_regex("^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
 
 enum class protocol { TCP, UDP };
 
 const std::array<std::pair<std::string_view, protocol>, 2> protocol_map{
     {{"TCP", protocol::TCP}, {"UDP", protocol::UDP}}};
+
+enum class port_state { CLOSED, OPEN, UNKNOWN };
+
+auto port_state_string(port_state state) -> std::string {
+  switch (state) {
+  case port_state::UNKNOWN:
+    return "UNKNOWN";
+  case port_state::CLOSED:
+    return "CLOSED";
+  case port_state::OPEN:
+    return "OPEN";
+  }
+}
 
 auto tokenize(const std::string input) -> std::vector<std::string> {
   std::vector<std::string> tokens{};
@@ -101,6 +116,57 @@ auto set_protocol(char *protocolarg) -> std::optional<protocol> {
 
   return std::nullopt;
 }
+
+auto create_socket(std::string host, const uint16_t port)
+    -> std::optional<std::tuple<int, struct sockaddr_storage>> {
+
+  int status, fd;
+  struct sockaddr_storage remote;
+
+  if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+    std::cerr << "ERROR: Error creating socket\n";
+    return std::nullopt;
+  }
+
+  // Configure socket
+  // fcntl(fd, F_SETFL, SOCK_NONBLOCK);
+  // setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+  //
+  auto *ipv4 = reinterpret_cast<sockaddr_in *>(&remote);
+  ipv4->sin_family = AF_INET;
+  ipv4->sin_port = htons(port);
+
+  if ((status = inet_pton(AF_INET, host.data(), &ipv4->sin_addr)) != 1) {
+    std::cerr << "ERROR: Could not convert '" << host
+              << "' to network notation\n";
+    return std::nullopt;
+  }
+
+  return std::make_tuple(fd, remote);
+}
+
+auto scan(int fd, struct sockaddr *out) -> port_state {
+  int status;
+
+  if ((status = connect(fd, out, sizeof(*out))) != 0) {
+    std::cerr << "ERROR: Could not connect to host\n";
+    return port_state::UNKNOWN;
+  }
+
+  // if ((status = send(fd, probe, probe_len, 0)) != 0) {
+  //   std::cerr << "ERROR: Could not send probe to host\n";
+  //   return port_state::UNKNOWN;
+  // }
+
+  return port_state::OPEN;
+}
+
+auto print(uint16_t port, port_state state) -> void {
+  std::ostringstream oss;
+  oss << "port=" << port << ";state=" << port_state_string(state) << '\n';
+  std::cout << oss.str();
+}
+
 } // namespace scanner
 
 auto print_help() -> void {
@@ -154,15 +220,21 @@ auto main(int argc, char *argv[]) -> int {
     }
   }
 
-  std::cout << "DEBUG: Ports:" << '\n';
-  for (auto &el : ports) {
-    std::cout << static_cast<int>(el) << '\n';
-  }
+  std::for_each(hosts.begin(), hosts.end(), [&ports](const auto host) -> void {
+    std::for_each(ports.begin(), ports.end(), [&host](const auto port) -> void {
+      if (auto opt = scanner::create_socket(host, port); opt) {
+        auto [fd, remote] = std::move(*opt);
 
-  std::cout << "DEBUG: Hosts:" << '\n';
-  for (auto &el : hosts) {
-    std::cout << el << '\n';
-  }
+        auto port_state =
+            scanner::scan(fd, reinterpret_cast<sockaddr *>(&remote));
+        scanner::print(port, port_state);
+
+      } else {
+        std::cerr << "ERROR: Could not create network socket for host '" << host
+                  << "'\n";
+      }
+    });
+  });
 
   return 0;
 }

@@ -31,3 +31,7 @@
 * Time how long a scan takes
 * Show summary stats (ports scanned, open/closed count, duration)
 
+## References
+
+* [Beej's guide to network programming](https://beej.us/guide/bgnet/)
+
