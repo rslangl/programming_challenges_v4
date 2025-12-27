@@ -3,9 +3,16 @@
 #include <cstdint>
 #include <iostream>
 #include <ranges>
+#include <regex>
 #include <string_view>
 #include <unistd.h>
 #include <vector>
+
+const std::regex ipv4_regex("^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
+
+// static auto is_ipv4(const std::string host) -> bool {
+//   constexpr std::regex host_regex(ipv4_regex);
+// }
 
 auto print_help() -> void {
   std::cout << "Usage: " << '\n'
@@ -47,10 +54,12 @@ public:
                   [this](const auto &token) -> void {
                     std::string host_val{};
 
-                    host_val = token;
-
-                    // TODO: regex parse
-                    this->_hosts.push_back(host_val);
+                    if (std::regex_match(token, ipv4_regex)) {
+                      host_val = token;
+                      this->_hosts.push_back(host_val);
+                    } else {
+                      std::cerr << "ERROR: Invalid host IPv4 addrress" << '\n';
+                    }
                   });
   }
 
