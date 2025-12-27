@@ -1,9 +1,6 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <array>
-// #include <bitset>
-#include <cstdint>
-#include <cstring>
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -30,15 +27,18 @@ const std::array<std::pair<std::string_view, protocol>, 2> protocol_map{
 
 enum class port_state { CLOSED, OPEN, UNKNOWN };
 
-auto port_state_string(port_state state) -> std::string {
-  switch (state) {
-  case port_state::UNKNOWN:
-    return "UNKNOWN";
-  case port_state::CLOSED:
-    return "CLOSED";
-  case port_state::OPEN:
-    return "OPEN";
+const std::array<std::pair<std::string_view, port_state>, 3> port_state_map{
+    {{"UNKNOWN", port_state::UNKNOWN},
+     {"CLOSED", port_state::CLOSED},
+     {"OPEN", port_state::OPEN}}};
+
+auto get_port_state(port_state state) -> std::optional<std::string> {
+  for (const auto [strval, ps] : port_state_map) {
+    if (ps == state) {
+      return std::string{strval};
+    }
   }
+  return std::nullopt;
 }
 
 auto tokenize(const std::string input) -> std::vector<std::string> {
@@ -145,6 +145,13 @@ auto create_socket(std::string host, const uint16_t port)
   return std::make_tuple(fd, remote);
 }
 
+auto print(uint16_t port, port_state state) -> void {
+  std::ostringstream oss;
+  oss << "port=" << port << ";state=" << get_port_state(state).value_or("NULL")
+      << '\n';
+  std::cout << oss.str();
+}
+
 auto scan(int fd, struct sockaddr *out) -> port_state {
   int status;
 
@@ -161,10 +168,29 @@ auto scan(int fd, struct sockaddr *out) -> port_state {
   return port_state::OPEN;
 }
 
-auto print(uint16_t port, port_state state) -> void {
-  std::ostringstream oss;
-  oss << "port=" << port << ";state=" << port_state_string(state) << '\n';
-  std::cout << oss.str();
+/// @brief Runs a probe scan for all ports on all hosts
+/// @param hosts    The list of hosts to run scans on
+/// @pamam ports    The list of ports to probe
+/// @param protocol The port protocol to probe (TCP/UDP)
+auto scan_all(const std::vector<std::string> hosts,
+              const std::vector<uint16_t> ports, const protocol protocol)
+    -> void {
+
+  std::for_each(hosts.begin(), hosts.end(), [&ports](const auto host) -> void {
+    std::for_each(ports.begin(), ports.end(), [&host](const auto port) -> void {
+      if (auto opt = scanner::create_socket(host, port); opt) {
+        auto [fd, remote] = std::move(*opt);
+
+        auto port_state =
+            scanner::scan(fd, reinterpret_cast<sockaddr *>(&remote));
+        scanner::print(port, port_state);
+
+      } else {
+        std::cerr << "ERROR: Could not create network socket for host '" << host
+                  << "'\n";
+      }
+    });
+  });
 }
 
 } // namespace scanner
@@ -220,21 +246,7 @@ auto main(int argc, char *argv[]) -> int {
     }
   }
 
-  std::for_each(hosts.begin(), hosts.end(), [&ports](const auto host) -> void {
-    std::for_each(ports.begin(), ports.end(), [&host](const auto port) -> void {
-      if (auto opt = scanner::create_socket(host, port); opt) {
-        auto [fd, remote] = std::move(*opt);
-
-        auto port_state =
-            scanner::scan(fd, reinterpret_cast<sockaddr *>(&remote));
-        scanner::print(port, port_state);
-
-      } else {
-        std::cerr << "ERROR: Could not create network socket for host '" << host
-                  << "'\n";
-      }
-    });
-  });
+  scan_all(hosts, ports, protocol);
 
   return 0;
 }
