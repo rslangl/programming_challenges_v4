@@ -2,6 +2,7 @@
 
 using namespace scanner;
 
+namespace scanner {
 namespace {
 auto scan_one(int fd, const struct sockaddr_storage &remote) -> port_state {
   int status;
@@ -48,3 +49,5 @@ auto scan(const std::vector<std::string> hosts,
     });
   });
 }
+
+} // namespace scanner

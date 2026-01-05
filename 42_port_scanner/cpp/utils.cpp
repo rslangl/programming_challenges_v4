@@ -1,8 +1,7 @@
 #include "utils.hpp"
 #include "port_state.hpp"
 
-using namespace scanner;
-
+namespace scanner {
 namespace {
 auto tokenize(const std::string input) -> std::vector<std::string> {
   std::vector<std::string> tokens{};
@@ -93,3 +92,5 @@ auto print(uint16_t port, port_state state) -> void {
   oss << "port=" << port << ";state=" << port_stringrep(state) << '\n';
   std::cout << oss.str();
 }
+
+} // namespace scanner

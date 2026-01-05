@@ -1,7 +1,6 @@
 #include "socket.hpp"
 
-using namespace scanner;
-
+namespace scanner {
 auto make_socket(std::string host, const uint16_t port)
     -> std::optional<std::tuple<int, struct sockaddr_storage>> {
 
@@ -29,3 +28,5 @@ auto make_socket(std::string host, const uint16_t port)
 
   return std::make_tuple(fd, remote);
 }
+
+} // namespace scanner
