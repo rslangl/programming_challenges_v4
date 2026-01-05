@@ -31,19 +31,13 @@ auto main(int argc, char *argv[]) -> int {
     case 'p':
       if (auto p = scanner::ports_from_input(optarg)) {
         ports = *p;
-      } else {
-        std::cerr << "ERROR: Invalid port input: " << optarg << '\n';
-        return -1;
       }
-      continue;
+      break;
     case 'h':
       if (auto h = scanner::hosts_from_input(optarg)) {
         hosts = *h;
-      } else {
-        std::cerr << "ERROR: Minimum one host input is required\n";
-        return -1;
       }
-      continue;
+      break;
     // case 't':
     //   if (auto p = scanner::protocol_from_input(optarg)) {
     //     protocol = *p;
@@ -52,10 +46,25 @@ auto main(int argc, char *argv[]) -> int {
     //     return -1;
     //   }
     //   continue;
+    case '?':
+      print_help();
+      return 1;
     default:
       print_help();
       return 1;
     }
+  }
+
+  if (ports.empty()) {
+    std::cerr << "ERROR: Invalid port input\n";
+    print_help();
+    return 1;
+  }
+
+  if (hosts.empty()) {
+    std::cerr << "ERROR: Minimum one host input is required\n";
+    print_help();
+    return 1;
   }
 
   scanner::scan(hosts, ports);
