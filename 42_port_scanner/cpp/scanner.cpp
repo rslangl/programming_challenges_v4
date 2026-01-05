@@ -36,10 +36,11 @@ auto scan(const std::vector<std::string> hosts,
 
   std::for_each(hosts.begin(), hosts.end(), [&ports](const auto host) -> void {
     std::for_each(ports.begin(), ports.end(), [&host](const auto port) -> void {
-      if (auto opt = make_socket(host, port); opt) {
-        auto [fd, remote] = std::move(*opt);
+      if (auto opt = make_socket(host, iptype::IPv4, port, protocol::TCP)) {
+        // auto [fd, remote] = std::move(*opt);
+        auto socket = std::move(*opt);
 
-        auto port_state = scan_one(fd, remote);
+        auto port_state = scan_one(socket.fd, socket.addr);
         print(port, port_state);
 
       } else {
