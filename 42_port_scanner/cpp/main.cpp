@@ -36,12 +36,12 @@ auto main(int argc, char *argv[]) -> int {
       }
       break;
     case 'r':
-      if (auto h = scanner::hosts_from_input(optarg)) {
+      if (auto h = scanner::hosts_from_input(optarg); h.has_value()) {
         hosts = *h;
       }
       break;
     case 't':
-      if (auto p = scanner::protocol_from_input(optarg)) {
+      if (auto p = scanner::protocol_from_input(optarg); p.has_value()) {
         protocol = *p;
       }
       break;

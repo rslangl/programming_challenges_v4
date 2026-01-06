@@ -76,7 +76,7 @@ auto hosts_from_input(const char *hostarg)
 
 auto protocol_from_input(const char *protocolarg)
     -> std::expected<protocol, scanner_error> {
-  std::string_view input{protocolarg}; // = std::string{protocolarg};
+  std::string_view input{protocolarg};
 
   auto it = std::find(protocols.begin(), protocols.end(), input);
   if (it == protocols.end()) {

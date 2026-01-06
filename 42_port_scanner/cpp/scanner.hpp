@@ -6,6 +6,7 @@
 #include "utils.hpp"
 #include <cstdint>
 #include <cstring>
+#include <expected>
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>

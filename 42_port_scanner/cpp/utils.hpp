@@ -11,7 +11,7 @@
 
 namespace scanner {
 
-enum class scanner_error { invalid_input, socket_error };
+enum class scanner_error { invalid_input, socket_error, connection_error };
 
 auto ports_from_input(const char *portarg)
     -> std::expected<std::vector<uint16_t>, scanner_error>;

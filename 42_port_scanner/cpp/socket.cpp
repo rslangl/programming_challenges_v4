@@ -19,7 +19,7 @@ auto make_socket(std::string_view host, ip_type type, const uint16_t port,
                  protocol protocol)
     -> std::expected<struct socket_data, scanner_error> {
 
-  int st, fd;
+  int st, flags, fd;
   struct sockaddr_storage remote{};
 
   if ((st = socket_type(protocol)) == -1) {
@@ -31,8 +31,14 @@ auto make_socket(std::string_view host, ip_type type, const uint16_t port,
     return std::unexpected(scanner_error::socket_error);
   }
 
+  // Acquire existing flags for socket
+  if ((flags = fcntl(fd, F_GETFL, 0)) != 0) { // TODO: causes error
+    std::cerr << "ERROR: Could not get socket flags";
+    return std::unexpected(scanner_error::socket_error);
+  }
+
   // Configure socket to non-blocking
-  if (fcntl(fd, F_SETFL, SOCK_NONBLOCK) != 0) {
+  if (fcntl(fd, F_SETFL, flags |= O_NONBLOCK) != 0) {
     std::cerr << "ERROR: Could not configure to non-blocking socket\n";
     return std::unexpected(scanner_error::socket_error);
   }
