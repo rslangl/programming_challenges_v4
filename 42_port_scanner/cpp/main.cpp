@@ -1,6 +1,5 @@
 #include <getopt.h>
 #include <iostream>
-#include <optional>
 #include <vector>
 
 #include "protocol.hpp"
@@ -10,8 +9,8 @@
 static auto print_help() -> void {
   std::cout << "Usage: " << '\n'
             << "  -p  Port(s) to scan" << '\n'
-            << "  -h  Target host" << '\n'
-            << "  -t  Transmission protocl (UDP/TCP)" << '\n';
+            << "  -r  Remote host" << '\n'
+            << "  -t  Transmission protocol (UDP/TCP)" << '\n';
 }
 
 auto main(int argc, char *argv[]) -> int {
@@ -29,7 +28,10 @@ auto main(int argc, char *argv[]) -> int {
   while ((opt = getopt(argc, argv, "p:r:t:h")) != -1) {
     switch (opt) {
     case 'p':
-      if (auto p = scanner::ports_from_input(optarg)) {
+      // if (auto p = scanner::ports_from_input(optarg)) {
+      //   ports = *p;
+      // }
+      if (const auto p = scanner::ports_from_input(optarg); p.has_value()) {
         ports = *p;
       }
       break;

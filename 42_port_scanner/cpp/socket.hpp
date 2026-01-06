@@ -1,12 +1,13 @@
 #pragma once
 
 #include "protocol.hpp"
+#include "utils.hpp"
 #include <arpa/inet.h>
 #include <cstdint>
+#include <fcntl.h>
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <optional>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -15,7 +16,7 @@
 
 namespace scanner {
 
-enum class iptype { IPv4, IPv6 };
+enum class ip_type { IPv4, IPv6 };
 
 struct socket_data {
   int fd{-1};
@@ -26,7 +27,8 @@ struct socket_data {
 /// @param host IPv4 address of the host
 /// @param port Host port to be scanned
 /// @returns Tuple containing a file descriptor and socket address storage
-auto make_socket(std::string_view host, iptype type, const uint16_t port,
-                 protocol protocol) -> std::optional<struct socket_data>;
+auto make_socket(std::string_view host, ip_type type, const uint16_t port,
+                 protocol protocol)
+    -> std::expected<struct socket_data, scanner_error>;
 
 } // namespace scanner

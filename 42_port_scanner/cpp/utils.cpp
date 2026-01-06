@@ -14,7 +14,7 @@ auto tokenize(const std::string input) -> std::vector<std::string> {
 } // namespace
 
 auto ports_from_input(const char *portarg)
-    -> std::optional<std::vector<uint16_t>> {
+    -> std::expected<std::vector<uint16_t>, scanner_error> {
 
   std::vector<uint16_t> ports{};
   std::string input = std::string(portarg);
@@ -37,14 +37,14 @@ auto ports_from_input(const char *portarg)
 
   if (ports.empty()) {
     std::cerr << "ERROR: Port list is empty\n";
-    return std::nullopt;
+    return std::unexpected(scanner_error::invalid_input);
   }
 
   return ports;
 }
 
 auto hosts_from_input(const char *hostarg)
-    -> std::optional<std::vector<std::string>> {
+    -> std::expected<std::vector<std::string>, scanner_error> {
   std::vector<std::string> hosts{};
   std::string input = std::string(hostarg);
 
@@ -68,18 +68,19 @@ auto hosts_from_input(const char *hostarg)
 
   if (hosts.empty()) {
     std::cerr << "ERROR: Host list is empty\n";
-    return std::nullopt;
+    return std::unexpected(scanner_error::invalid_input);
   }
 
   return hosts;
 }
 
-auto protocol_from_input(const char *protocolarg) -> std::optional<protocol> {
+auto protocol_from_input(const char *protocolarg)
+    -> std::expected<protocol, scanner_error> {
   std::string_view input{protocolarg}; // = std::string{protocolarg};
 
   auto it = std::find(protocols.begin(), protocols.end(), input);
   if (it == protocols.end()) {
-    return std::nullopt;
+    return std::unexpected(scanner_error::invalid_input);
   }
 
   return static_cast<protocol>(std::distance(protocols.begin(), it));
