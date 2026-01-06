@@ -1,5 +1,4 @@
 #include "utils.hpp"
-#include "port_state.hpp"
 
 namespace scanner {
 namespace {
@@ -75,18 +74,17 @@ auto hosts_from_input(const char *hostarg)
   return hosts;
 }
 
-// auto protocol_from_input(char *protocolarg) -> std::optional<protocol> {
-//   std::string input = std::string(protocolarg);
-//
-//   for (auto [name, prot] : protocol_map) {
-//     if (name == input) {
-//       return prot;
-//     }
-//   }
-//
-//   return std::nullopt;
-// }
-//
+auto protocol_from_input(const char *protocolarg) -> std::optional<protocol> {
+  std::string_view input{protocolarg}; // = std::string{protocolarg};
+
+  auto it = std::find(protocols.begin(), protocols.end(), input);
+  if (it == protocols.end()) {
+    return std::nullopt;
+  }
+
+  return static_cast<protocol>(std::distance(protocols.begin(), it));
+}
+
 auto print(uint16_t port, port_state state) -> void {
   std::ostringstream oss;
   oss << "port=" << port << ";state=" << port_stringrep(state) << '\n';

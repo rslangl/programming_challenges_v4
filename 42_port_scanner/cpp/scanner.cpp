@@ -31,24 +31,26 @@ auto scan_one(int fd, const struct sockaddr_storage &remote) -> port_state {
 } // namespace
 
 auto scan(const std::vector<std::string> hosts,
-          const std::vector<uint16_t> ports /*, const protocol protocol*/)
-    -> void {
+          const std::vector<uint16_t> ports, const protocol protocol) -> void {
 
-  std::for_each(hosts.begin(), hosts.end(), [&ports](const auto host) -> void {
-    std::for_each(ports.begin(), ports.end(), [&host](const auto port) -> void {
-      if (auto opt = make_socket(host, iptype::IPv4, port, protocol::TCP)) {
-        // auto [fd, remote] = std::move(*opt);
-        auto socket = std::move(*opt);
+  std::for_each(
+      hosts.begin(), hosts.end(), [&ports, &protocol](const auto host) -> void {
+        std::for_each(
+            ports.begin(), ports.end(),
+            [&host, &protocol](const auto port) -> void {
+              if (auto opt = make_socket(host, iptype::IPv4, port, protocol)) {
+                // auto [fd, remote] = std::move(*opt);
+                auto socket = std::move(*opt);
 
-        auto port_state = scan_one(socket.fd, socket.addr);
-        print(port, port_state);
+                auto port_state = scan_one(socket.fd, socket.addr);
+                print(port, port_state);
 
-      } else {
-        std::cerr << "ERROR: Could not create network socket for host '" << host
-                  << "'\n";
-      }
-    });
-  });
+              } else {
+                std::cerr << "ERROR: Could not create network socket for host '"
+                          << host << "'\n";
+              }
+            });
+      });
 }
 
 } // namespace scanner

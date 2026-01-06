@@ -17,7 +17,6 @@ namespace scanner {
 /// @pamam ports    The list of ports to probe
 /// @param protocol The port protocol to probe (TCP/UDP)
 auto scan(const std::vector<std::string> hosts,
-          const std::vector<uint16_t> ports
-          /*const protocol protocol*/) -> void;
+          const std::vector<uint16_t> ports, const protocol protocol) -> void;
 
 } // namespace scanner

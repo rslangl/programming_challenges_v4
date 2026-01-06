@@ -1,6 +1,7 @@
 #pragma once
 
 #include "port_state.hpp"
+#include "protocol.hpp"
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -38,7 +39,7 @@ auto ports_from_input(const char *portarg)
 auto hosts_from_input(const char *hostarg)
     -> std::optional<std::vector<std::string>>;
 
-// auto protocol_from_input(char *protocolarg) -> std::optional<protocol>;
+auto protocol_from_input(const char *protocolarg) -> std::optional<protocol>;
 
 auto print(uint16_t port, port_state state) -> void;
 

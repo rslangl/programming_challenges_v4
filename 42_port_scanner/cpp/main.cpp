@@ -18,34 +18,31 @@ auto main(int argc, char *argv[]) -> int {
 
   int opt{};
 
-  std::vector<std::string> hosts;
-  std::vector<uint16_t> ports;
-  // scanner::protocol protocol;
+  std::vector<std::string> hosts{};
+  std::vector<uint16_t> ports{};
+  scanner::protocol protocol;
 
   // p = port
-  // h = host
+  // r = remote host
   // t = transmission protocl (TCP/UDP)
   // h = help
-  while ((opt = getopt(argc, argv, "p:h:t:h")) != -1) {
+  while ((opt = getopt(argc, argv, "p:r:t:h")) != -1) {
     switch (opt) {
     case 'p':
       if (auto p = scanner::ports_from_input(optarg)) {
         ports = *p;
       }
       break;
-    case 'h':
+    case 'r':
       if (auto h = scanner::hosts_from_input(optarg)) {
         hosts = *h;
       }
       break;
-    // case 't':
-    //   if (auto p = scanner::protocol_from_input(optarg)) {
-    //     protocol = *p;
-    //   } else {
-    //     std::cerr << "ERROR: Invalid protocol selection: " << optarg << '\n';
-    //     return -1;
-    //   }
-    //   continue;
+    case 't':
+      if (auto p = scanner::protocol_from_input(optarg)) {
+        protocol = *p;
+      }
+      break;
     case '?':
       print_help();
       return 1;
@@ -67,7 +64,7 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
 
-  scanner::scan(hosts, ports);
+  scanner::scan(hosts, ports, protocol);
 
   return 0;
 }
