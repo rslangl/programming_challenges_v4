@@ -28,9 +28,6 @@ auto main(int argc, char *argv[]) -> int {
   while ((opt = getopt(argc, argv, "p:r:t:h")) != -1) {
     switch (opt) {
     case 'p':
-      // if (auto p = scanner::ports_from_input(optarg)) {
-      //   ports = *p;
-      // }
       if (const auto p = scanner::ports_from_input(optarg); p.has_value()) {
         ports = *p;
       }

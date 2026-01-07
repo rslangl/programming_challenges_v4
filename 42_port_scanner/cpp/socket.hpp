@@ -3,14 +3,16 @@
 #include "protocol.hpp"
 #include "utils.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <system_error>
 #include <tuple>
 #include <unistd.h>
 
@@ -23,12 +25,11 @@ struct socket_data {
   struct sockaddr_storage addr;
 };
 
-/// @brief Creates a internet socket for a given host and port
-/// @param host IPv4 address of the host
-/// @param port Host port to be scanned
-/// @returns Tuple containing a file descriptor and socket address storage
-auto make_socket(std::string_view host, ip_type type, const uint16_t port,
-                 protocol protocol)
-    -> std::expected<struct socket_data, scanner_error>;
+// auto make_socket(std::string_view host, ip_type type, const uint16_t port
+//              /*protocol protocol*/)
+// -> std::expected<struct socket_data, std::string_view>;
+//
+auto make_socket(const char *host, const char *port, const char *protocol)
+    -> std::expected<struct socket_data, std::error_code>;
 
 } // namespace scanner

@@ -8,17 +8,15 @@
 #include <cstring>
 #include <expected>
 #include <iostream>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <vector>
 
 namespace scanner {
 
-/// @brief Runs a probe scan for all ports on all hosts
-/// @param hosts    The list of hosts to run scans on
-/// @pamam ports    The list of ports to probe
-/// @param protocol The port protocol to probe (TCP/UDP)
 auto scan(const std::vector<std::string> hosts,
-          const std::vector<uint16_t> ports, const protocol protocol) -> void;
+          const std::vector<uint16_t> ports, const protocol protocol)
+    -> std::expected<std::vector<std::string>, std::string>;
 
 } // namespace scanner
