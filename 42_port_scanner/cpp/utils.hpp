@@ -14,13 +14,13 @@ namespace scanner {
 enum class scanner_error { invalid_input, socket_error, connection_error };
 
 auto ports_from_input(const char *portarg)
-    -> std::expected<std::vector<uint16_t>, scanner_error>;
+    -> std::expected<std::vector<const char *>, std::string>;
 
 auto hosts_from_input(const char *hostarg)
-    -> std::expected<std::vector<std::string>, scanner_error>;
+    -> std::expected<std::vector<const char *>, std::string>;
 
 auto protocol_from_input(const char *protocolarg)
-    -> std::expected<protocol, scanner_error>;
+    -> std::expected<protocol, std::string>;
 
 auto print(uint16_t port, port_state state) -> void;
 

@@ -37,12 +37,13 @@ auto make_socket(const char *host, const char *port, const char *protocol)
 
   int fd{-1};
   struct sockaddr_storage remote{};
-
-  if (fd = socket(PF_INET, SOCK_STREAM, getprotobyname(protocol)) == -1) {
+  // getprotobyname(protocol)
+  if ((fd = socket(PF_INET, SOCK_STREAM, 0) == -1)) {
     return std::unexpected(std::error_code(errno, std::generic_category()));
   }
 
-  // Get existing flags for socket
+  // Get existing flgsags for socket
+  int flags;
   if ((flags = fcntl(fd, F_GETFL, 0)) != 0) {
     return std::unexpected(std::error_code(errno, std::generic_category()));
   }
@@ -52,7 +53,7 @@ auto make_socket(const char *host, const char *port, const char *protocol)
     std::cerr << "ERROR: Could not configure to non-blocking socket\n";
     return std::unexpected(std::error_code(errno, std::generic_category()));
   }
-  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags));
 
   return socket_data{fd, remote};
 }

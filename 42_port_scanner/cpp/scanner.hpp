@@ -15,8 +15,18 @@
 
 namespace scanner {
 
-auto scan(const std::vector<std::string> hosts,
-          const std::vector<uint16_t> ports, const protocol protocol)
+// TODO: union type containing either result set or error output, use as field
+// in target
+
+class target {
+public:
+  target() : host{}, ports{} {}
+  const char *host;
+  std::vector<char *> ports;
+};
+
+auto scan(const std::vector<const char *> hosts,
+          const std::vector<const char *> ports)
     -> std::expected<std::vector<std::string>, std::string>;
 
 } // namespace scanner

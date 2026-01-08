@@ -14,38 +14,46 @@ auto tokenize(const std::string input) -> std::vector<std::string> {
 } // namespace
 
 auto ports_from_input(const char *portarg)
-    -> std::expected<std::vector<uint16_t>, scanner_error> {
+    -> std::expected<std::vector<const char *>, std::string> {
 
-  std::vector<uint16_t> ports{};
+  std::vector<const char *> ports{};
   std::string input = std::string(portarg);
 
   std::vector<std::string> tokens = tokenize(input);
-  std::for_each(tokens.begin(), tokens.end(),
-                [&ports](const auto &token) -> void {
-                  unsigned int port_val{};
 
-                  auto [ptr, ec] = std::from_chars(
-                      token.data(), token.data() + token.size(), port_val, 10);
+  // TODO: statically declare consteval
 
-                  if (ec != std::errc{} || port_val < 0 || port_val > 65535) {
-                    std::cerr << "ERROR: Invalid numeric input '" << port_val
-                              << "', ignoring\n";
-                  } else {
-                    ports.push_back(static_cast<uint16_t>(port_val));
-                  }
-                });
+  for (const auto &token : tokens) {
+    ports.push_back(token.data());
+  }
+  // std::for_each(tokens.begin(), tokens.end(),
+  //               [&ports](const auto &token) -> void {
+  //                 unsigned int port_val{};
+  //
+  //                 auto [ptr, ec] = std::from_chars(
+  //                     token.data(), token.data() + token.size(), port_val,
+  //                     10);
+  //
+  //                 if (ec != std::errc{} || port_val < 0 || port_val > 65535)
+  //                 {
+  //                   std::cerr << "ERROR: Invalid numeric input '" << port_val
+  //                             << "', ignoring\n";
+  //                 } else {
+  //                   ports.push_back(static_cast<uint16_t>(port_val));
+  //                 }
+  //               });
 
   if (ports.empty()) {
-    std::cerr << "ERROR: Port list is empty\n";
-    return std::unexpected(scanner_error::invalid_input);
+    // std::cerr << "ERROR: Port list is empty\n";
+    return std::unexpected(std::string{"port list is empty"});
   }
 
   return ports;
 }
 
 auto hosts_from_input(const char *hostarg)
-    -> std::expected<std::vector<std::string>, scanner_error> {
-  std::vector<std::string> hosts{};
+    -> std::expected<std::vector<const char *>, std::string> {
+  std::vector<const char *> hosts{};
   std::string input = std::string(hostarg);
 
   std::vector<std::string> tokens = tokenize(input);
@@ -59,7 +67,7 @@ auto hosts_from_input(const char *hostarg)
 
                   if (std::regex_match(token, ipv4_regex)) {
                     host_val = token;
-                    hosts.push_back(host_val);
+                    hosts.push_back(host_val.data());
                   } else {
                     std::cerr << "ERROR: Invalid host IPv4 addrress '" << token
                               << "', ignoring\n";
@@ -67,20 +75,19 @@ auto hosts_from_input(const char *hostarg)
                 });
 
   if (hosts.empty()) {
-    std::cerr << "ERROR: Host list is empty\n";
-    return std::unexpected(scanner_error::invalid_input);
+    return std::unexpected(std::string{"host list empty"});
   }
 
   return hosts;
 }
 
 auto protocol_from_input(const char *protocolarg)
-    -> std::expected<protocol, scanner_error> {
+    -> std::expected<protocol, std::string> {
   std::string_view input{protocolarg};
 
   auto it = std::find(protocols.begin(), protocols.end(), input);
   if (it == protocols.end()) {
-    return std::unexpected(scanner_error::invalid_input);
+    return std::unexpected(std::string{"invalid protocol input value"});
   }
 
   return static_cast<protocol>(std::distance(protocols.begin(), it));

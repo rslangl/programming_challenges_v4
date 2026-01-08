@@ -7,7 +7,7 @@ LDFLAGS :=
 BIN := portscanner
 
 # Source files
-SRC := main.cpp scanner.cpp socket.cpp utils.cpp
+SRC := main.cpp scanner.cpp utils.cpp #socket.cpp
 
 # Object files
 OBJS := $(SRC:.cpp=.o)
