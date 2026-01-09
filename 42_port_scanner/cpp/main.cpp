@@ -19,6 +19,7 @@ auto main(int argc, char *argv[]) -> int {
 
   std::vector<const char *> hosts{};
   std::vector<const char *> ports{};
+  const char *protocol;
   // scanner::protocol protocol;
 
   // p = port
@@ -37,11 +38,11 @@ auto main(int argc, char *argv[]) -> int {
         hosts = *h;
       }
       break;
-    // case 't':
-    //   if (auto p = scanner::protocol_from_input(optarg); p.has_value()) {
-    //     protocol = *p;
-    //   }
-    //   break;
+    case 't':
+      if (auto p = scanner::protocol_from_input(optarg); p.has_value()) {
+        protocol = *p;
+      }
+      break;
     case '?':
       print_help();
       return 1;
@@ -63,7 +64,7 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
 
-  scanner::scan(hosts, ports);
+  scanner::scan(hosts, ports, protocol);
 
   return 0;
 }

@@ -31,15 +31,16 @@ namespace scanner {
 // } // namespace
 //
 auto scan(const std::vector<const char *> hosts,
-          const std::vector<const char *> ports)
+          const std::vector<const char *> ports, const char *protocol)
     -> std::expected<std::vector<std::string>, std::string> {
 
   std::vector<std::string> res{};
 
   for (const auto &host : hosts) {
     struct addrinfo hints{};
-    hints.ai_family = SOCK_STREAM;
     hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
 
     int rc;
     struct addrinfo *res;

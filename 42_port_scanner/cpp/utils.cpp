@@ -21,31 +21,16 @@ auto ports_from_input(const char *portarg)
 
   std::vector<std::string> tokens = tokenize(input);
 
-  // TODO: statically declare consteval
-
   for (const auto &token : tokens) {
-    ports.push_back(token.data());
-  }
-  // std::for_each(tokens.begin(), tokens.end(),
-  //               [&ports](const auto &token) -> void {
-  //                 unsigned int port_val{};
-  //
-  //                 auto [ptr, ec] = std::from_chars(
-  //                     token.data(), token.data() + token.size(), port_val,
-  //                     10);
-  //
-  //                 if (ec != std::errc{} || port_val < 0 || port_val > 65535)
-  //                 {
-  //                   std::cerr << "ERROR: Invalid numeric input '" << port_val
-  //                             << "', ignoring\n";
-  //                 } else {
-  //                   ports.push_back(static_cast<uint16_t>(port_val));
-  //                 }
-  //               });
+    std::size_t pos{};
+    const int val{std::stoi(token.c_str(), &pos)};
 
-  if (ports.empty()) {
-    // std::cerr << "ERROR: Port list is empty\n";
-    return std::unexpected(std::string{"port list is empty"});
+    if (val < 0 || val > 65535) {
+      return std::unexpected(std::format("invalid input value for port: {}",
+                                         static_cast<size_t>(val)));
+    }
+
+    ports.push_back(token.c_str());
   }
 
   return ports;
@@ -53,6 +38,7 @@ auto ports_from_input(const char *portarg)
 
 auto hosts_from_input(const char *hostarg)
     -> std::expected<std::vector<const char *>, std::string> {
+
   std::vector<const char *> hosts{};
   std::string input = std::string(hostarg);
 
@@ -61,42 +47,33 @@ auto hosts_from_input(const char *hostarg)
   static const std::regex ipv4_regex(
       "^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
 
-  std::for_each(tokens.begin(), tokens.end(),
-                [&hosts](const auto &token) -> void {
-                  std::string host_val{};
+  for (const auto &token : tokens) {
+    if (!std::regex_match(token, ipv4_regex)) {
+      return std::unexpected(
+          std::format("invalid input value for host: {}", token.c_str()));
+    }
 
-                  if (std::regex_match(token, ipv4_regex)) {
-                    host_val = token;
-                    hosts.push_back(host_val.data());
-                  } else {
-                    std::cerr << "ERROR: Invalid host IPv4 addrress '" << token
-                              << "', ignoring\n";
-                  }
-                });
-
-  if (hosts.empty()) {
-    return std::unexpected(std::string{"host list empty"});
+    hosts.push_back(token.c_str());
   }
 
   return hosts;
 }
 
 auto protocol_from_input(const char *protocolarg)
-    -> std::expected<protocol, std::string> {
-  std::string_view input{protocolarg};
+    -> std::expected<const char *, std::string> {
 
-  auto it = std::find(protocols.begin(), protocols.end(), input);
-  if (it == protocols.end()) {
-    return std::unexpected(std::string{"invalid protocol input value"});
+  std::string input{protocolarg};
+  std::transform(input.begin(), input.end(), input.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+
+  static const std::regex protocol_regex("(^tcp$|^udp$)");
+
+  if (!std::regex_match(input, protocol_regex)) {
+    return std::unexpected(
+        std::format("invalid input value for protocol: {}", input));
   }
 
-  return static_cast<protocol>(std::distance(protocols.begin(), it));
-}
-
-auto print(uint16_t port, port_state state) -> void {
-  std::ostringstream oss;
-  oss << "port=" << port << ";state=" << port_stringrep(state) << '\n';
-  std::cout << oss.str();
+  return input.c_str();
 }
 
 } // namespace scanner

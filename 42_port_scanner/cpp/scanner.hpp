@@ -26,7 +26,7 @@ public:
 };
 
 auto scan(const std::vector<const char *> hosts,
-          const std::vector<const char *> ports)
+          const std::vector<const char *> ports, const char *protocol)
     -> std::expected<std::vector<std::string>, std::string>;
 
 } // namespace scanner
