@@ -13,7 +13,6 @@ pub fn main() !void {
         std.debug.print("Input: {d}\n", .{limit});
 
         for (0..limit) |n| {
-
             if (n % 15 == 0) {
                 try out.print("{s}\n", .{"fizzbuzz"});
             } else if (n % 5 == 0) {
@@ -24,7 +23,6 @@ pub fn main() !void {
                 try out.print("{d}\n", .{n});
             }
         }
-
     } else {
         const out = std.io.getStdErr().writer();
         try out.print("error: {s}\n", .{"a numeric input is required"});

@@ -31,7 +31,16 @@
 * Time how long a scan takes
 * Show summary stats (ports scanned, open/closed count, duration)
 
+## TODO
+
+* Parse input hosts as CIDR (e.g. `10.0.0.0/24`) to generate set of hosts
+* Split hosts into equal size sets and execute each set in parallel
+* Improve protocol handling, only doing TCP at the moment
+
 ## References
 
 * [Beej's guide to network programming](https://beej.us/guide/bgnet/)
-
+* [socket() - Linux manpage](https://www.man7.org/linux/man-pages/man2/socket.2.html)
+* [getaddrinfo() - Linux manpage](https://www.man7.org/linux/man-pages/man3/getaddrinfo.3.html)
+* [select() - Linux manpage](https://www.man7.org/linux/man-pages/man2/select.2.html)
+* [netdb.h - Linux manpage](https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html)

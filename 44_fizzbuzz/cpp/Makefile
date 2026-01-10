@@ -8,4 +8,4 @@ clean:
 	$(RM) $(BIN)
 
 build: main.cpp
-	$(CC) $(CFLAGS)  main.cpp -o $(BIN)
+	$(CC) $(CFLAGS) main.cpp -o $(BIN)
