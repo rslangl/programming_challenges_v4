@@ -2,7 +2,6 @@
 #include <iostream>
 #include <vector>
 
-#include "protocol.hpp"
 #include "scanner.hpp"
 #include "utils.hpp"
 
@@ -17,10 +16,9 @@ auto main(int argc, char *argv[]) -> int {
 
   int opt{};
 
-  std::vector<const char *> hosts{};
-  std::vector<const char *> ports{};
-  const char *protocol;
-  // scanner::protocol protocol;
+  std::vector<std::string> hosts{};
+  std::vector<std::string> ports{};
+  std::string protocol;
 
   // p = port
   // r = remote host
@@ -36,6 +34,8 @@ auto main(int argc, char *argv[]) -> int {
     case 'r':
       if (auto h = scanner::hosts_from_input(optarg); h.has_value()) {
         hosts = *h;
+      } else {
+        std::cerr << h.error() << '\n';
       }
       break;
     case 't':
@@ -64,7 +64,16 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
 
-  scanner::scan(hosts, ports, protocol);
+  if (const auto sr = scanner::scan(hosts, ports, protocol); sr.has_value()) {
+    for (const auto &[host, port_list] : *sr) {
+      std::cout << "Scan report for host: " << host << '\n';
+      std::cout << "  Port\tState" << '\n';
+      for (const auto &[port, state] : port_list) {
+        std::cout << "  " << port << "\t" << state << '\n';
+      }
+    }
+    std::cout << '\n';
+  }
 
   return 0;
 }

@@ -3,103 +3,157 @@
 using namespace scanner;
 
 namespace scanner {
-// namespace {
 
-// TODO: handle unreachable hosts, errno values:
-// ETIMEDOUT, connection attempt timed out
-// EHOSTUNREACH, host unreachable
-// EADDRNOTAVAIL, invalid address
-// auto inline parse_conn_res(int err) -> port_state {
-//   switch (err) {
-//   case EISCONN: {
-//     return port_state::OPEN;
-//     break;
-//   }
-//   case ECONNREFUSED: {
-//     return port_state::CLOSED;
-//     break;
-//   }
-//   // Firewall
-//   case EACCES: {
-//     return port_state::CLOSED;
-//     break;
-//   }
-//   default:
-//     return port_state::UNKNOWN;
-//   }
-// }
-// } // namespace
-//
-auto scan(const std::vector<const char *> hosts,
-          const std::vector<const char *> ports, const char *protocol)
-    -> std::expected<std::vector<std::string>, std::string> {
+using port_state = std::pair<std::string, std::string>;
+using host_result = std::vector<port_state>;
 
-  std::vector<std::string> res{};
+auto scan(const std::vector<std::string> hosts,
+          const std::vector<std::string> ports, std::string protocol)
+    -> std::expected<
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>>,
+        std::string> {
+
+  // TODO: use protocol here to shutup the compiler
+  std::cerr << protocol << '\n';
+
+  std::map<std::string, host_result> scan{};
 
   for (const auto &host : hosts) {
-    struct addrinfo hints{};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    int rc;
-    struct addrinfo *res;
 
     for (const auto &port : ports) {
-      if ((rc = getaddrinfo(host, port, &hints, &res)) != 0) {
-        std::stringstream err_msg;
-        err_msg << "resolve failed: " << gai_strerror(rc) << '\n';
-        // TODO: populate entry in res accordingly, requring a union, using
-        // err_msg.str()
-        continue;
+
+      // Return code
+      int rc;
+      // Linked list of resolved addresses for host
+      struct addrinfo *res = nullptr;
+      // Control-flow
+      bool is_open = false;
+      bool is_closed = false;
+      bool saw_timeout = false;
+
+      // Host configurations
+      struct addrinfo hints{};
+      // Any address family, both IPv4 and IPv6
+      hints.ai_family = AF_UNSPEC;
+      // Protocol, either TCP (SOCK_STREAM) or UDP (SOCK_DRGRAM)
+      hints.ai_socktype = SOCK_STREAM;
+
+      rc = getaddrinfo(host.c_str(), port.c_str(), &hints, &res);
+      if (rc != 0) {
+        return std::unexpected(
+            std::format("getaddrinfo() error: {}", gai_strerror(rc)));
       }
 
       // Iterate all resolved IP addresses for the remote host and create a
       // socket for each
-      for (struct addrinfo *ai = res; ai; ai = ai->ai_next) {
+      for (struct addrinfo *ai = res; ai != nullptr; ai = ai->ai_next) {
+
         int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (fd == -1) {
-          // TODO: could not create socket for host, handle accordingly
+          // Socket creation failed for this address for this host, try the next
+          // one
           continue;
         }
 
-        int conn = connect(fd, ai->ai_addr, ai->ai_addrlen);
-        if (conn == 0) {
-          // TODO: connection successful, report port for host as open
-          break;
+        // Set socket to non-blocking
+        int flags = fcntl(fd, F_GETFL, 0);
+        if (flags == -1) {
+          close(fd);
+          return std::unexpected(std::format("fcntl() get"));
         }
 
-        // Connection in process
-        if (errno == EINPROGRESS) {
-          fd_set write_fds;
+        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+          close(fd);
+          return std::unexpected(std::format("fcntl() set"));
+        }
 
+        // Attempt connection
+        rc = connect(fd, ai->ai_addr, ai->ai_addrlen);
+
+        // Connection successful, report as open
+        if (rc == 0) {
+          is_open = true;
+          close(fd);
+          break;
+        } else if (rc == -1 && errno == EINPROGRESS) {
+          // Non-blocking connection in process
+          fd_set write_fds;
           FD_ZERO(&write_fds);
           FD_SET(fd, &write_fds);
 
-          select(fd + 1, nullptr, &write_fds, nullptr, nullptr);
+          // Specify timeout
+          struct timeval timeout{};
+          timeout.tv_sec = 5;
+          timeout.tv_usec = 0;
 
-          // Check if connection succeeded
-          int error = 0;
-          socklen_t err_len = sizeof(error);
-          getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &err_len);
+          // Wait until file descriptor for socket gets ready
+          rc = select(fd + 1, nullptr, &write_fds, nullptr, &timeout);
+          int err = 0;
+          socklen_t err_len = sizeof(err);
 
-          if (error != 0) {
-            // return std::unexpected(std::error_code(errno,
-            // std::generic_category()));
-            std::stringstream err_msg;
-            err_msg << "resolve failed: " << gai_strerror(rc) << '\n';
-            return std::unexpected(err_msg.str());
+          if (rc > 0 && FD_ISSET(fd, &write_fds)) {
+
+            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &err_len) < 0) {
+              close(fd);
+              return std::unexpected(std::string{"getsockopt() error"});
+            }
+
+            // TODO: handle unreachable hosts, errno values:
+            // EHOSTUNREACH, host unreachable
+            // EADDRNOTAVAIL, invalid address
+            if (err == 0 || err == EISCONN) {
+              is_open = true;
+            } else if (err == ECONNREFUSED || err == EACCES) {
+              is_closed = true;
+            } else if (err == ETIMEDOUT) {
+              saw_timeout = true;
+            } else {
+              is_closed = true;
+            }
+
+            close(fd);
+            break;
+
+            // select() timeout
+          } else if (rc == 0) {
+            saw_timeout = true;
+            close(fd);
+            break;
+
+          } else {
+            close(fd);
+            std::error_code ec(errno, std::system_category());
+            return std::unexpected(
+                std::format("select() error: {}", ec.message()));
           }
+        } else if (errno == ECONNREFUSED || errno == EACCES) {
+          is_closed = true;
+          close(fd);
+          break;
+        } else {
+          close(fd);
         }
+      } // end address loop
 
-        // TODO: at this point, connection is a failure
+      freeaddrinfo(res);
 
-        close(fd);
+      std::string state;
+      if (is_open) {
+        state = "OPEN";
+      } else if (is_closed) {
+        state = "CLOSED";
+      } else if (saw_timeout) {
+        state = "FILTERED";
+      } else {
+        state = "UNKNOWN";
       }
-    }
 
-    freeaddrinfo(res);
-  }
-  return res;
+      scan[host].push_back({port, state});
+
+    } // end port loop
+  } // end host loop
+
+  return scan;
 }
+
 } // namespace scanner

@@ -1,32 +1,24 @@
 #pragma once
 
-#include "port_state.hpp"
-#include "protocol.hpp"
-#include "socket.hpp"
-#include "utils.hpp"
 #include <cstdint>
 #include <cstring>
 #include <expected>
+#include <fcntl.h>
 #include <iostream>
+#include <map>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <vector>
 
 namespace scanner {
 
-// TODO: union type containing either result set or error output, use as field
-// in target
+auto scan(const std::vector<std::string> hosts,
+          const std::vector<std::string> ports, const std::string protocol)
 
-class target {
-public:
-  target() : host{}, ports{} {}
-  const char *host;
-  std::vector<char *> ports;
-};
-
-auto scan(const std::vector<const char *> hosts,
-          const std::vector<const char *> ports, const char *protocol)
-    -> std::expected<std::vector<std::string>, std::string>;
+    -> std::expected<
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>>,
+        std::string>;
 
 } // namespace scanner

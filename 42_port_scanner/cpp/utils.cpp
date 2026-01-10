@@ -14,9 +14,9 @@ auto tokenize(const std::string input) -> std::vector<std::string> {
 } // namespace
 
 auto ports_from_input(const char *portarg)
-    -> std::expected<std::vector<const char *>, std::string> {
+    -> std::expected<std::vector<std::string>, std::string> {
 
-  std::vector<const char *> ports{};
+  std::vector<std::string> ports{};
   std::string input = std::string(portarg);
 
   std::vector<std::string> tokens = tokenize(input);
@@ -30,37 +30,40 @@ auto ports_from_input(const char *portarg)
                                          static_cast<size_t>(val)));
     }
 
-    ports.push_back(token.c_str());
+    ports.push_back(token);
   }
 
   return ports;
 }
 
 auto hosts_from_input(const char *hostarg)
-    -> std::expected<std::vector<const char *>, std::string> {
+    -> std::expected<std::vector<std::string>, std::string> {
 
-  std::vector<const char *> hosts{};
+  std::vector<std::string> hosts{};
   std::string input = std::string(hostarg);
 
   std::vector<std::string> tokens = tokenize(input);
 
   static const std::regex ipv4_regex(
       "^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
-
+  // static const std::regex url_regex(
+  //     "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%.\\+~#=]{1,"
+  //     "256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%\\+.~#?&\\/=]*)$");
+  //
   for (const auto &token : tokens) {
     if (!std::regex_match(token, ipv4_regex)) {
       return std::unexpected(
           std::format("invalid input value for host: {}", token.c_str()));
     }
 
-    hosts.push_back(token.c_str());
+    hosts.push_back(token);
   }
 
   return hosts;
 }
 
 auto protocol_from_input(const char *protocolarg)
-    -> std::expected<const char *, std::string> {
+    -> std::expected<std::string, std::string> {
 
   std::string input{protocolarg};
   std::transform(input.begin(), input.end(), input.begin(),
@@ -73,7 +76,7 @@ auto protocol_from_input(const char *protocolarg)
         std::format("invalid input value for protocol: {}", input));
   }
 
-  return input.c_str();
+  return input;
 }
 
 } // namespace scanner
