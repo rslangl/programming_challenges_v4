@@ -8,8 +8,7 @@
 static auto print_help() -> void {
   std::cout << "Usage: " << '\n'
             << "  -p  Port(s) to scan" << '\n'
-            << "  -r  Remote host" << '\n'
-            << "  -t  Transmission protocol (UDP/TCP)" << '\n';
+            << "  -r  Remote host" << '\n';
 }
 
 auto main(int argc, char *argv[]) -> int {

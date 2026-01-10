@@ -46,12 +46,14 @@ auto hosts_from_input(const char *hostarg)
 
   static const std::regex ipv4_regex(
       "^(((?!25?[6-9])[12]\\d|[1-9])?\\d\\.?\\b){4}$");
-  // static const std::regex url_regex(
-  //     "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%.\\+~#=]{1,"
-  //     "256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%\\+.~#?&\\/=]*)$");
-  //
+  static const std::regex url_regex(
+      "^(?:https?:\\/\\/"
+      ")?(?:www\\.)?[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)+(?::\\d{1,5})?(?:\\/"
+      "[^\\s?#]*)?(?:\\?[^\\s#]*)?(?:#[^\\s]*)?$");
+
   for (const auto &token : tokens) {
-    if (!std::regex_match(token, ipv4_regex)) {
+    if (!(std::regex_match(token, ipv4_regex)) &&
+        !(std::regex_match(token, url_regex))) {
       return std::unexpected(
           std::format("invalid input value for host: {}", token.c_str()));
     }
