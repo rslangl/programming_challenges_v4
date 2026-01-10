@@ -15,7 +15,7 @@ auto ports_from_input(const char *portarg)
 auto hosts_from_input(const char *hostarg)
     -> std::expected<std::vector<std::string>, std::string>;
 
-auto protocol_from_input(const char *protocolarg)
-    -> std::expected<std::string, std::string>;
-
+// auto protocol_from_input(const char *protocolarg)
+//     -> std::expected<std::string, std::string>;
+//
 } // namespace scanner

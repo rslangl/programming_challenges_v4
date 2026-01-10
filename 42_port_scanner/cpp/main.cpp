@@ -24,7 +24,7 @@ auto main(int argc, char *argv[]) -> int {
   // r = remote host
   // t = transmission protocl (TCP/UDP)
   // h = help
-  while ((opt = getopt(argc, argv, "p:r:t:h")) != -1) {
+  while ((opt = getopt(argc, argv, "p:r:h")) != -1) {
     switch (opt) {
     case 'p':
       if (const auto p = scanner::ports_from_input(optarg); p.has_value()) {
@@ -36,11 +36,6 @@ auto main(int argc, char *argv[]) -> int {
         hosts = *h;
       } else {
         std::cerr << h.error() << '\n';
-      }
-      break;
-    case 't':
-      if (auto p = scanner::protocol_from_input(optarg); p.has_value()) {
-        protocol = *p;
       }
       break;
     case '?':
@@ -64,7 +59,7 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
 
-  if (const auto sr = scanner::scan(hosts, ports, protocol); sr.has_value()) {
+  if (const auto sr = scanner::scan(hosts, ports); sr.has_value()) {
     for (const auto &[host, port_list] : *sr) {
       std::cout << "Scan report for host: " << host << '\n';
       std::cout << "  Port\tState" << '\n';

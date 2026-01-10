@@ -8,13 +8,10 @@ using port_state = std::pair<std::string, std::string>;
 using host_result = std::vector<port_state>;
 
 auto scan(const std::vector<std::string> hosts,
-          const std::vector<std::string> ports, std::string protocol)
+          const std::vector<std::string> ports)
     -> std::expected<
         std::map<std::string, std::vector<std::pair<std::string, std::string>>>,
         std::string> {
-
-  // TODO: use protocol here to shutup the compiler
-  std::cerr << protocol << '\n';
 
   std::map<std::string, host_result> scan{};
 
@@ -35,8 +32,8 @@ auto scan(const std::vector<std::string> hosts,
       struct addrinfo hints{};
       // Any address family, both IPv4 and IPv6
       hints.ai_family = AF_UNSPEC;
-      // Protocol, either TCP (SOCK_STREAM) or UDP (SOCK_DRGRAM)
-      hints.ai_socktype = SOCK_STREAM;
+      // Protocol, where we let the resolver select based on input
+      hints.ai_socktype = 0;
 
       rc = getaddrinfo(host.c_str(), port.c_str(), &hints, &res);
       if (rc != 0) {

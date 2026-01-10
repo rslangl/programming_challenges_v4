@@ -15,8 +15,7 @@
 namespace scanner {
 
 auto scan(const std::vector<std::string> hosts,
-          const std::vector<std::string> ports, const std::string protocol)
-
+          const std::vector<std::string> ports)
     -> std::expected<
         std::map<std::string, std::vector<std::pair<std::string, std::string>>>,
         std::string>;

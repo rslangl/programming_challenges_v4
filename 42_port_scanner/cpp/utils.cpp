@@ -62,21 +62,4 @@ auto hosts_from_input(const char *hostarg)
   return hosts;
 }
 
-auto protocol_from_input(const char *protocolarg)
-    -> std::expected<std::string, std::string> {
-
-  std::string input{protocolarg};
-  std::transform(input.begin(), input.end(), input.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-
-  static const std::regex protocol_regex("(^tcp$|^udp$)");
-
-  if (!std::regex_match(input, protocol_regex)) {
-    return std::unexpected(
-        std::format("invalid input value for protocol: {}", input));
-  }
-
-  return input;
-}
-
 } // namespace scanner
