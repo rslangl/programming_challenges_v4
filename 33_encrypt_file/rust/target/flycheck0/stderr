@@ -1,0 +1,4 @@
+error: failed to parse manifest at `/home/user/dev/sw/programming_challenges_v4/33_encrypt_file/rust/Cargo.toml`
+
+Caused by:
+  manifest is missing either a `[package]` or a `[workspace]`
