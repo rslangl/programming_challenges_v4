@@ -1,5 +1,6 @@
 use std::{
     fs::{self, File},
+    io::Write,
     path::PathBuf,
 };
 
@@ -32,7 +33,25 @@ fn load(path: PathBuf) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     Ok(bytes)
 }
 
-fn encrypt() {}
+fn encrypt(outfile: PathBuf, bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut file = File::create(outfile.as_os_str())?;
+
+    for byte in &bytes {
+        println!("{}", byte);
+    }
+
+    let encbytes = bytes.iter().for_each(|b| {
+        //fs::write(outfile.as_os_str(), b)?;
+
+        println!("{}", b);
+    });
+
+    // if let Ok(eb) = encbytes {
+    //     file.write(eb)?;
+    // }
+
+    Ok(())
+}
 
 fn decrypt() {}
 
@@ -40,6 +59,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let bytes = load(args.input_file.into())?;
+
+    encrypt(args.output_file.into(), bytes);
 
     Ok(())
 }
