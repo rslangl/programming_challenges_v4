@@ -24,6 +24,7 @@
             pkgs.zlib
             pkgs.rustfmt
             pkgs.clippy
+            pkgs.dmd
           ];
 
           shellHook = ''
